@@ -1,0 +1,22 @@
+{
+  "name": "bid-ui",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/srsydv/Bid-UI.git"
+  },
+  "author": "Shrish",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/srsydv/Bid-UI/issues"
+  },
+  "homepage": "https://github.com/srsydv/Bid-UI#readme",
+  "dependencies": {
+    "parcel": "^2.8.3",
+    "web3": "^1.9.0"
+  }
+}
