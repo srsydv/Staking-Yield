@@ -141,6 +141,7 @@ contract StakingYield is Ownable, ReentrancyGuard, Pausable {
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
+            rewardTokens -= reward;
             Token.transfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
