@@ -4,7 +4,7 @@ const dreamBidFee = '0x7849cB5A5623670c328018d8778a75Da11F47084';
 const gameRegistry = '0xA29F1b0a0C3490c190781b33ce640E9a3DaD807E';
 const BidGame = '0xd8EC62805717245416e839719181c63a9CE4800B';
 
-const stakingYield = '0x1d626523B365137BE1599a1ca7E34cb6Ea5C43b3';
+const stakingYield = '0x3D48272CF7B23B382406D480f8000c0017e9eB8a';
 
 // const dreamBidFeeABI = require('./ABIs/dreamBidFee.json')
 // const gameRegistryABI = require('./ABIs/gameRegistry.json')
