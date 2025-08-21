@@ -2,6 +2,30 @@
 
 This document explains the `StakingYield` smart contract in this repository. It focuses only on this contract: purpose, roles, state, events, functions, reward math, penalties, and typical usage flows.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Highlights](#highlights)
+- [Key Design Notes](#key-design-notes)
+- [Roles & Permissions](#roles--permissions)
+- [State Variables](#state-variables-selected)
+- [Time Constants](#time-constants)
+- [Events](#events)
+- [Modifiers](#modifiers)
+- [Core Functions](#core-functions)
+  - [Constructor](#constructor)
+  - [Admin Controls](#admin-controls)
+  - [Staking & Withdrawing](#staking--withdrawing)
+  - [Rewards](#rewards)
+- [Reward Mathematics](#reward-mathematics)
+- [Penalty/Burn Mechanics](#penaltyburn-mechanics)
+- [Pausing Behavior](#pausing-behavior)
+- [Typical Operational Flow](#typical-operational-flow)
+- [Deployment](#deployment)
+- [Minimal Example Sequence](#minimal-example-sequence)
+- [Gas & Reentrancy](#gas--reentrancy)
+- [File](#file)
+
 ## Overview
 
 `StakingYield` is a staking and reward-distribution contract for a single ERC‑20 token. The same token is used for:
@@ -10,6 +34,14 @@ This document explains the `StakingYield` smart contract in this repository. It 
 - burning (early withdrawal penalties).
 
 The contract uses OpenZeppelin `Ownable`, `ReentrancyGuard`, and `Pausable`. It requires the token to implement `ERC20Burnable` because early withdrawals may burn a portion of the staked tokens held by the contract.
+
+## Highlights
+
+- **Single-token design:** The same ERC‑20 powers staking, rewards, and burn penalties.
+- **Admin-only staking:** Owner credits stakes on behalf of users after approving transfers.
+- **Linear emissions:** Adjustable `duration` with carry-over of remaining rewards.
+- **Time locks and penalties:** 6-month lock; tiered burns at 6–12 (50%), 12–24 (20%), 24–36 (10%), then 0% ≥36 months.
+- **Operational safety:** Uses `nonReentrant` and `Pausable`; owner-gated administration.
 
 ## Key Design Notes
 
@@ -71,12 +103,12 @@ The contract uses OpenZeppelin `Ownable`, `ReentrancyGuard`, and `Pausable`. It 
 
 ## Core Functions
 
-Constructor
+### Constructor
 - `constructor(address _stakingToken)`
   - Sets `Token` and `burnableToken` to the same token address.
   - `_stakingToken` must support `ERC20Burnable` for burn-based penalties.
 
-Admin Controls
+### Admin Controls
 - `pause()` / `unpause()` – toggles contract-wide pause via `Pausable`.
 - `setRewardsDuration(uint256 _duration)` – sets the next reward duration; can only be called if the previous period `finishAt < block.timestamp`.
 - `depositRewardToken(uint256 _amount)` – pulls `_amount` tokens from owner into the contract and increments `rewardTokens`.
@@ -86,7 +118,7 @@ Admin Controls
   - Updates `finishAt` and `updatedAt` and emits `RewardAdded`.
 - `recoverERC20(address ownerAddress, uint256 tokenAmount)` – transfers `tokenAmount` of `Token` from the contract to `ownerAddress`.
 
-Staking & Withdrawing
+### Staking & Withdrawing
 - `stake(address user, uint256 amount)` – `onlyOwner`.
   - Pulls `amount` tokens from `msg.sender` (the owner) and credits the stake to `user`.
   - Updates `balanceOf[user]`, `stakeTimestamps[user]`, and `totalSupply`.
@@ -101,7 +133,7 @@ Staking & Withdrawing
     - ≥ 36 months: 0% burn
   - Sends `withdrawableAmount = stakedAmount - burnAmount` to user, then burns `burnAmount` from the contract’s token balance. Emits `Withdrawn`.
 
-Rewards
+### Rewards
 - `lastTimeRewardApplicable()` – min(`finishAt`, `block.timestamp`).
 - `rewardPerToken()` – returns updated `rewardPerTokenStored` accounting for time elapsed and `totalSupply`.
 - `earned(address account)` – user’s accrued rewards based on stake and index delta.
@@ -134,10 +166,18 @@ Rewards
 - Burns occur on principal when withdrawing before certain maturities.
 - The contract transfers the net amount to the user and then calls `burnableToken.burn(burnAmount)`. Since `burn()` burns from `msg.sender`, the burn is applied to tokens still held by the contract.
 
+| Time since stake | Principal burn | Withdrawal allowed |
+| --- | --- | --- |
+| < 6 months | N/A | Not allowed |
+| 6–12 months | 50% | Allowed |
+| 12–24 months | 20% | Allowed |
+| 24–36 months | 10% | Allowed |
+| ≥ 36 months | 0% | Allowed |
+
 ## Pausing Behavior
 
-- `whenNotPaused` protects `stake`, `withdraw`, `depositRewardToken`, and `notifyRewardAmount`.
-- While paused, users cannot withdraw or claim rewards via those protected functions (claiming is not paused in the code; only `getReward()` lacks `whenNotPaused`, so claiming remains allowed).
+- Protected by `whenNotPaused`: `stake`, `withdraw`, `depositRewardToken`, `notifyRewardAmount`, and `recoverERC20`.
+- While paused, staking and withdrawals are disabled; `getReward()` is not paused and remains callable so users can still claim accrued rewards.
 
 ## Safety & Considerations
 
